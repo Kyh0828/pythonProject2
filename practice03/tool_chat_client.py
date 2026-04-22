@@ -60,7 +60,6 @@ def delete_file(file_path):
 def create_file(file_path, content):
     """新建文件并写入内容"""
     try:
-        # 确保目录存在
         directory = os.path.dirname(file_path)
         if directory and not os.path.exists(directory):
             os.makedirs(directory, exist_ok=True)
@@ -83,14 +82,12 @@ def read_file(file_path):
 def curl(url):
     """通过curl访问网页并返回网页内容"""
     try:
-        # 解析URL
         parsed_url = urllib.parse.urlparse(url)
         host = parsed_url.netloc
         path = parsed_url.path or '/'
         if parsed_url.query:
             path += '?' + parsed_url.query
         
-        # 创建连接
         if parsed_url.scheme == 'https':
             conn = http.client.HTTPSConnection(host)
         else:
@@ -105,7 +102,6 @@ def curl(url):
         content = response.read().decode('utf-8', errors='replace')
         conn.close()
         
-        # 限制返回内容长度
         max_length = 2000
         if len(content) > max_length:
             content = content[:max_length] + "\n... (内容过长，已截断)"
@@ -147,7 +143,6 @@ def read_chat_log(log_path):
 
 def send_message(base_url, model, api_key, messages):
     """发送消息到LLM服务并返回响应"""
-    # 解析URL
     if base_url.startswith('https://'):
         url = base_url[8:]
         use_https = True
@@ -155,7 +150,6 @@ def send_message(base_url, model, api_key, messages):
         url = base_url[7:]
         use_https = False
     
-    # 分离主机和路径
     if '/' in url:
         host, path = url.split('/', 1)
         path = '/' + path
@@ -163,14 +157,12 @@ def send_message(base_url, model, api_key, messages):
         host = url
         path = '/'
     
-    # 处理路径
     if not path.endswith('/chat/completions'):
         if path.endswith('/'):
             path += 'chat/completions'
         else:
             path += '/chat/completions'
     
-    # 创建连接
     if use_https:
         conn = http.client.HTTPSConnection(host)
     else:
@@ -235,7 +227,6 @@ def extract_key_info(conversation_history, base_url, model, api_key):
 对话历史：
 """
     
-    # 构建要提取的对话内容（只包含用户和助手的内容，不包含系统提示）
     dialog_content = ""
     for msg in conversation_history:
         if msg['role'] == 'user':
@@ -252,11 +243,9 @@ def extract_key_info(conversation_history, base_url, model, api_key):
     
     if 'error' not in result:
         try:
-            # 尝试解析JSON格式的提取结果
             extracted_data = json.loads(result['content'])
             return extracted_data
         except json.JSONDecodeError:
-            # 如果不是JSON格式，直接返回原内容
             return result['content']
     return None
 
@@ -264,29 +253,25 @@ def main():
     """主函数：交互式对话循环"""
     env_vars = load_env()
     
-    # 默认配置
     base_url = env_vars.get('BASE_URL', 'https://api.openai.com/v1')
     model = env_vars.get('MODEL', 'gpt-3.5-turbo')
     api_key = env_vars.get('API_KEY', 'your-api-key-here')
     
-    # 聊天日志配置
     chat_log_path = r"D:\chat-log\log.txt"
     chat_count = 0
     recent_user_messages = []
     
-    # 提示用户配置
     if not env_vars:
         print("Warning: .env file not found or empty")
         print("Using default configuration. Please copy env.example to .env and fill in the correct values for production use")
         print()
     
     print("=" * 50)
-    print("AI智能体交互系统（工具调用版）")
+    print("AI智能体交互系统（工具调用增强版）")
     print("输入 'exit' 或按 Ctrl+C 退出")
     print("=" * 50)
     print()
     
-    # 系统提示词
     system_prompt = """
 你是一个智能助手，能够使用以下工具来帮助用户完成任务：
 
@@ -327,15 +312,12 @@ def main():
 当你收到工具执行结果后，请用自然语言总结给用户。
 """
     
-    # 对话历史记录
     conversation_history = [{'role': 'system', 'content': system_prompt}]
     
     try:
         while True:
-            # 获取用户输入
             user_input = input("You: ").strip()
             
-            # 检查退出命令
             if user_input.lower() == 'exit':
                 print("\n感谢使用，再见！")
                 break
@@ -343,32 +325,25 @@ def main():
             if not user_input:
                 continue
             
-            # 检查是否需要搜索聊天历史
             search_keywords = ['查找聊天历史', '搜索历史', '查看历史', '历史记录', '以前聊过', '之前说过']
             need_search_history = (
                 user_input.startswith('/search') or
                 any(keyword in user_input for keyword in search_keywords)
             )
             
-            # 如果需要搜索聊天历史
             if need_search_history:
-                # 读取聊天日志
                 log_content = read_chat_log(chat_log_path)
                 
-                # 将聊天历史和用户请求结合发送给LLM
                 search_query = user_input.replace('/search', '').strip()
                 search_prompt = f"以下是用户的聊天历史记录：\n{log_content}\n\n用户当前请求：{search_query}\n\n请根据聊天历史记录回答用户的当前请求。"
                 
-                # 保存当前对话上下文
                 temp_history = conversation_history.copy()
                 
-                # 构建搜索上下文
                 search_messages = [
                     {'role': 'system', 'content': '你是一个智能助手，擅长根据历史聊天记录回答用户的问题。'},
                     {'role': 'user', 'content': search_prompt}
                 ]
                 
-                # 发送搜索请求
                 result = send_message(base_url, model, api_key, search_messages)
                 
                 if 'error' in result:
@@ -377,56 +352,45 @@ def main():
                 
                 print(f"AI: {result['content']}")
                 
-                # 恢复对话上下文
                 conversation_history = temp_history
                 conversation_history.append({'role': 'user', 'content': user_input})
                 conversation_history.append({'role': 'assistant', 'content': result['content']})
                 
-                # 显示统计信息
                 print(f"[统计] 时间: {result['time_taken']:.2f}s | "
                       f"Token: {result['total_tokens']} | "
                       f"速度: {result['tokens_per_second']:.2f}t/s")
                 print()
                 continue
             
-            # 记录用户消息
             chat_count += 1
             recent_user_messages.append({
                 'timestamp': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()),
                 'content': user_input
             })
             
-            # 添加用户消息到历史记录
             conversation_history.append({'role': 'user', 'content': user_input})
             
-            # 发送消息到LLM
             result = send_message(base_url, model, api_key, conversation_history)
             
             if 'error' in result:
                 print(f"Error: {result['error']}")
-                # 移除失败的用户消息
                 conversation_history.pop()
                 continue
             
-            # 显示AI回复
             print(f"AI: {result['content']}")
             
-            # 记录助手回复
             recent_user_messages.append({
                 'timestamp': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()),
                 'content': user_input,
                 'assistant': result['content']
             })
             
-            # 检查是否需要调用工具
             try:
-                # 尝试解析工具调用请求
                 toolcall_data = json.loads(result['content'])
                 if 'toolcall' in toolcall_data:
                     tool_name = toolcall_data['toolcall']['name']
                     tool_params = toolcall_data['toolcall']['params']
                     
-                    # 执行工具
                     tool_result = ""
                     if tool_name == 'list_directory':
                         tool_result = list_directory(tool_params['directory'])
@@ -447,29 +411,23 @@ def main():
                     else:
                         tool_result = f"错误：未知工具 {tool_name}"
                     
-                    # 显示工具执行结果
                     print(f"工具执行结果: {tool_result}")
                     
-                    # 将工具执行结果添加到对话历史
                     conversation_history.append({'role': 'assistant', 'content': result['content']})
                     conversation_history.append({'role': 'user', 'content': f"工具执行结果: {tool_result}"})
                     
-                    # 再次发送到LLM以获取总结
                     result = send_message(base_url, model, api_key, conversation_history)
                     if 'error' not in result:
                         print(f"AI: {result['content']}")
                         conversation_history.append({'role': 'assistant', 'content': result['content']})
                 else:
-                    # 普通回复，直接添加到历史记录
                     conversation_history.append({'role': 'assistant', 'content': result['content']})
             except json.JSONDecodeError:
-                # 不是工具调用，普通回复
                 conversation_history.append({'role': 'assistant', 'content': result['content']})
             except Exception as e:
                 print(f"工具调用解析错误: {str(e)}")
                 conversation_history.append({'role': 'assistant', 'content': result['content']})
             
-            # 每5次聊天提取一次关键信息
             if chat_count >= 5 and chat_count % 5 == 0:
                 print("\n[系统] 正在提取聊天关键信息...")
                 extracted_info = extract_key_info(conversation_history, base_url, model, api_key)
@@ -477,7 +435,6 @@ def main():
                 if extracted_info:
                     print(f"[系统] 提取的关键信息: {extracted_info}")
                     
-                    # 将关键信息追加到日志
                     log_records = []
                     if isinstance(extracted_info, list):
                         for info in extracted_info:
@@ -496,10 +453,8 @@ def main():
                     append_result = append_to_chat_log(chat_log_path, log_records)
                     print(f"[系统] {append_result}")
                 
-                # 清空最近的聊天记录（避免重复记录）
                 recent_user_messages = []
             
-            # 显示统计信息
             print(f"[统计] 时间: {result['time_taken']:.2f}s | "
                   f"Token: {result['total_tokens']} | "
                   f"速度: {result['tokens_per_second']:.2f}t/s")
