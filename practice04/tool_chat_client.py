@@ -23,6 +23,8 @@ def load_env():
 def list_directory(directory):
     """列出目录下的文件及其基本属性"""
     try:
+        # 处理路径，确保正确的路径格式
+        directory = directory.replace('/', '\\') if '\\' not in directory else directory
         files = os.listdir(directory)
         result = f"目录 {directory} 下的文件：\n"
         for file in files:
@@ -41,6 +43,8 @@ def list_directory(directory):
 def rename_file(old_path, new_name):
     """修改文件名字"""
     try:
+        # 处理路径，确保正确的路径格式
+        old_path = old_path.replace('/', '\\') if '\\' not in old_path else old_path
         directory = os.path.dirname(old_path)
         new_path = os.path.join(directory, new_name)
         os.rename(old_path, new_path)
@@ -51,6 +55,8 @@ def rename_file(old_path, new_name):
 def delete_file(file_path):
     """删除文件"""
     try:
+        # 处理路径，确保正确的路径格式
+        file_path = file_path.replace('/', '\\') if '\\' not in file_path else file_path
         if os.path.exists(file_path):
             os.remove(file_path)
             return f"文件已删除：{file_path}"
@@ -62,6 +68,8 @@ def delete_file(file_path):
 def create_file(file_path, content):
     """新建文件并写入内容"""
     try:
+        # 处理路径，确保正确的路径格式
+        file_path = file_path.replace('/', '\\') if '\\' not in file_path else file_path
         directory = os.path.dirname(file_path)
         if directory and not os.path.exists(directory):
             os.makedirs(directory, exist_ok=True)
@@ -75,6 +83,8 @@ def create_file(file_path, content):
 def read_file(file_path):
     """读取文件内容"""
     try:
+        # 处理路径，确保正确的路径格式
+        file_path = file_path.replace('/', '\\') if '\\' not in file_path else file_path
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
         return f"文件内容：\n{content}"
@@ -146,7 +156,7 @@ def read_chat_log(log_path):
 def anythingllm_query(message, api_key, workspace_slug):
     """使用subprocess调用curl访问AnythingLLM API"""
     try:
-        url = f"http://localhost:3001/api/v1/workspace/{workspace_slug}/chat"
+        url = f"http://localhost:3001/api/v1/workspace/ai/chat"
         
         data = {
             "message": message,
